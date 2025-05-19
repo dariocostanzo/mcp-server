@@ -7,3 +7,4 @@ sentence-transformers>=2.2.2  # For embeddings
 requests>=2.31.0        # For API calls
 python-dotenv>=1.0.0    # For environment variables
 ollama>=0.1.0           # Python client for Ollama
+PyPDF2==3.0.1

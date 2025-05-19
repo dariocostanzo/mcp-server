@@ -12,6 +12,15 @@ load_dotenv()
 ft_api = FinancialTimesAPI()
 vector_store = VectorStore()
 
+# Load PDF documents from data directory on startup
+data_dir = os.path.join(os.getcwd(), "data")
+if os.path.exists(data_dir):
+    print(f"Loading PDF documents from {data_dir}...")
+    vector_store.load_documents_from_directory(data_dir)
+    print("Documents loaded successfully!")
+else:
+    print(f"Data directory {data_dir} not found. No documents loaded.")
+
 # Create MCP tools
 class SearchPLCTool(MCPTool):
     name = "search_plc"
@@ -62,7 +71,7 @@ class SearchPLCTool(MCPTool):
 
 class RAGQueryTool(MCPTool):
     name = "rag_query"
-    description = "Query the vector database for relevant information"
+    description = "Query the vector database for relevant information from annual reports"
     
     def __init__(self):
         super().__init__()
@@ -71,7 +80,7 @@ class RAGQueryTool(MCPTool):
             "properties": {
                 "query": {
                     "type": "string",
-                    "description": "The query to search for in the vector database"
+                    "description": "The query to search for in the annual reports and other documents"
                 },
                 "k": {
                     "type": "integer",
@@ -87,35 +96,66 @@ class RAGQueryTool(MCPTool):
         k = params.get("k", 5)
         
         results = vector_store.search(query, k)
+        
+        # Enhance results with source information
+        for result in results:
+            if 'metadata' in result and 'source' in result['metadata']:
+                # Extract year from filename if possible
+                source = result['metadata']['source']
+                year = None
+                
+                # Try to extract year from filenames like "Company-Annual-Report-YYYY.pdf"
+                import re
+                year_match = re.search(r'(\d{4})', source)
+                if year_match:
+                    year = year_match.group(1)
+                    
+                if year:
+                    result['metadata']['year'] = year
+                    result['metadata']['source_description'] = f"Annual Report {year}"
+                else:
+                    result['metadata']['source_description'] = "Document"
+        
         return {"results": results}
 
-class GetShareholdersTool(MCPTool):
-    name = "get_shareholders"
-    description = "Get major shareholders for a company using Financial Times API"
+class LoadPDFDocumentsTool(MCPTool):
+    name = "load_pdf_documents"
+    description = "Load PDF documents from the data directory into the vector store"
     
     def __init__(self):
         super().__init__()
         self.parameters = {
             "type": "object",
             "properties": {
-                "ticker": {
+                "directory_path": {
                     "type": "string",
-                    "description": "The ticker symbol in format SYMBOL:EXCHANGE (e.g., BARC:LSE for Barclays PLC)"
+                    "description": "Path to the directory containing PDF files",
+                    "default": "data"
                 }
-            },
-            "required": ["ticker"]
+            }
         }
     
     async def execute(self, params):
-        ticker = params.get("ticker")
-        shareholders = ft_api.get_shareholders(ticker)
-        return {"shareholders": shareholders}
+        directory_path = params.get("directory_path", "data")
+        
+        # Make sure the path is absolute
+        if not os.path.isabs(directory_path):
+            directory_path = os.path.join(os.getcwd(), directory_path)
+        
+        # Load documents from the directory
+        vector_store.load_documents_from_directory(directory_path)
+        
+        # Save the updated vector store
+        os.makedirs("data", exist_ok=True)
+        vector_store.save("data/index.faiss", "data/documents.pkl")
+        
+        return {"status": "success", "message": f"Documents loaded from {directory_path}"}
 
 # Initialize MCP server
 server = MCPServer()
 server.add_tool(SearchPLCTool())
 server.add_tool(RAGQueryTool())
-server.add_tool(GetShareholdersTool())
+server.add_tool(LoadPDFDocumentsTool())
 
 # Start the server
 if __name__ == "__main__":
