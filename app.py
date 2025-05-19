@@ -19,8 +19,16 @@ def ensure_mcp_server_running():
             return
     except:
         print("Starting MCP server...")
-        subprocess.Popen(["python", "src/mcp_server.py"], 
-                         creationflags=subprocess.CREATE_NEW_CONSOLE)
+        # Check the operating system
+        import platform
+        if platform.system() == "Windows":
+            # Windows-specific code
+            subprocess.Popen(["python", "src/mcp_server.py"], 
+                            creationflags=subprocess.CREATE_NEW_CONSOLE)
+        else:
+            # macOS and Linux
+            subprocess.Popen(["python", "src/mcp_server.py"])
+        
         # Wait for server to start
         import time
         time.sleep(3)
