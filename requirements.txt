@@ -1,0 +1,9 @@
+# Core dependencies
+fastmcp>=0.1.0          # MCP server implementation
+langchain>=0.1.0        # For agent framework
+langchain-community>=0.0.10  # For community integrations
+faiss-cpu>=1.7.4        # Vector database
+sentence-transformers>=2.2.2  # For embeddings
+requests>=2.31.0        # For API calls
+python-dotenv>=1.0.0    # For environment variables
+ollama>=0.1.0           # Python client for Ollama
