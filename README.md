@@ -21,10 +21,11 @@ This project demonstrates how to build an application that:
 pip install -r requirements.txt
 
 3. Create a `.env` file with your API keys:
-
+```
 FT_API_KEY=your_financial_times_api_key
-OLLAMA_HOST= http://localhost:11434 OLLAMA_MODEL=llama3
-
+OLLAMA_HOST= http://localhost:11434 
+OLLAMA_MODEL=llama3
+```
 4. Make sure Ollama is installed and running
 
 ## Usage
