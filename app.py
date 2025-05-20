@@ -224,15 +224,24 @@ def process_query(query):
     
     return response["message"]["content"] if "message" in response and "content" in response["message"] else f"Error: {response.get('error', 'Unknown error')}"
 
+# Add this function to your app.py
 def list_loaded_documents():
     """List all documents loaded in the vector store"""
     if hasattr(vector_store, 'documents') and vector_store.documents:
-        print("Documents loaded in vector store:")
-        for i, doc in enumerate(vector_store.documents):
-            source = doc.metadata.get('source', 'Unknown source')
-            print(f"{i+1}. {source}")
+        print("\nDocuments loaded in vector store:")
+        sources = set()
+        for doc in vector_store.documents:
+            if 'source' in doc.metadata:
+                sources.add(doc.metadata['source'])
+        
+        for source in sorted(sources):
+            print(f"- {source}")
+        print()
     else:
         print("No documents loaded in vector store")
+
+# Add this call in your main() function before the query loop
+list_loaded_documents()
 
 # Add this to your main() function
 def main():
@@ -242,13 +251,14 @@ def main():
     # Ensure documents are loaded
     print("Checking if annual reports are loaded...")
     try:
-        if not hasattr(vector_store, 'documents') or len(vector_store.documents) == 0:
-            print("Loading annual reports from data folder...")
-            data_dir = os.path.join(os.getcwd(), "data")
-            vector_store.load_documents_from_directory(data_dir)
-            print(f"Successfully loaded {len(vector_store.documents)} document chunks from annual reports")
-        else:
-            print(f"Annual reports already loaded ({len(vector_store.documents)} document chunks)")
+        # Force reload documents regardless of current state
+        print("Loading annual reports from data folder...")
+        data_dir = os.path.join(os.getcwd(), "data")
+        # Clear existing documents first
+        if hasattr(vector_store, 'documents'):
+            vector_store.documents = []
+        vector_store.load_documents_from_directory(data_dir)
+        print(f"Successfully loaded {len(vector_store.documents)} document chunks from annual reports")
     except Exception as e:
         print(f"Error loading documents: {e}")
     
