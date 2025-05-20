@@ -46,14 +46,40 @@ class OllamaClient:
                 print(f"Failed to start Ollama server: {e}")
                 print("Please start Ollama manually before continuing")
     
-    def chat(self, messages, stream=False):
-        """Send a chat request to Ollama"""
+    def chat(self, messages, temperature=0.1):
+        """
+        Send a chat request to Ollama
+        
+        Args:
+            messages (list): List of message objects with role and content
+            temperature (float): Controls randomness in response generation (0.0-1.0)
+                                Lower values = more deterministic responses
+        
+        Returns:
+            dict: Response from Ollama
+        """
         try:
-            response = ollama.chat(
-                model=self.model,
-                messages=messages,
-                stream=stream
+            # Ensure Ollama is running
+            self.ensure_ollama_running()
+            
+            # Prepare the request payload
+            payload = {
+                "model": self.model,
+                "messages": messages,
+                "temperature": temperature,  # Add temperature parameter
+                "stream": False
+            }
+            
+            # Send the request to Ollama
+            response = requests.post(
+                f"{self.host}/api/chat",
+                json=payload
             )
-            return response
+            
+            # Check if the request was successful
+            if response.status_code == 200:
+                return response.json()
+            else:
+                return {"error": f"Request failed with status code {response.status_code}"}
         except Exception as e:
             return {"error": str(e)}
