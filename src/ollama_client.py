@@ -1,34 +1,44 @@
 import os
-import json
-import ollama
-from dotenv import load_dotenv
-import subprocess
-import time
 import requests
+import ollama
+import time
+import subprocess
+from dotenv import load_dotenv
 
 load_dotenv()
 
+# Get configuration from environment variables or use defaults
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "mistral")  # Using Mistral model
 
 class OllamaClient:
+    """Client for interacting with Ollama API"""
+    
     def __init__(self, model=OLLAMA_MODEL, host=OLLAMA_HOST):
+        """Initialize the Ollama client with model and host"""
         self.model = model
         self.host = host
         self.ensure_ollama_running()
     
     def ensure_ollama_running(self):
-        """Ensure Ollama is running, start it if not"""
+        """Check if Ollama is running, attempt to start if not"""
         try:
+            # Simple check to see if Ollama is responding
             response = requests.get(f"{self.host}/api/tags")
-            if response.status_code != 200:
-                raise Exception("Ollama server not responding correctly")
+            if response.status_code == 200:
+                print(f"Ollama is running with model: {self.model}")
+                return
         except:
             print("Ollama server not running. Attempting to start...")
             try:
                 # For Windows
-                subprocess.Popen(["ollama", "serve"], 
-                                 creationflags=subprocess.CREATE_NEW_CONSOLE)
+                if os.name == 'nt':
+                    subprocess.Popen(["ollama", "serve"], 
+                                    creationflags=subprocess.CREATE_NEW_CONSOLE)
+                else:
+                    # For macOS and Linux
+                    subprocess.Popen(["ollama", "serve"])
+                
                 # Wait for server to start
                 time.sleep(5)
                 print("Ollama server started")
@@ -36,21 +46,8 @@ class OllamaClient:
                 print(f"Failed to start Ollama server: {e}")
                 print("Please start Ollama manually before continuing")
     
-    def generate(self, prompt, system="", stream=False):
-        """Generate a response from Ollama"""
-        try:
-            response = ollama.generate(
-                model=self.model,
-                prompt=prompt,
-                system=system,
-                stream=stream
-            )
-            return response
-        except Exception as e:
-            return {"error": str(e)}
-    
     def chat(self, messages, stream=False):
-        """Chat with Ollama"""
+        """Send a chat request to Ollama"""
         try:
             response = ollama.chat(
                 model=self.model,

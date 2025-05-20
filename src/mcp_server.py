@@ -1,18 +1,15 @@
 import os
 import json
-from fastmcp import MCPServer, MCPTool
-from src.tools.ft_api import FinancialTimesAPI
-from src.rag.vector_store import VectorStore
-import ollama
-from dotenv import load_dotenv
-
-load_dotenv()
+from http.server import HTTPServer, BaseHTTPRequestHandler
+import threading
+from src.ft_api import FinancialTimesAPI
+from src.vector_store import VectorStore
 
 # Initialize components
 ft_api = FinancialTimesAPI()
 vector_store = VectorStore()
 
-# Load PDF documents from data directory on startup
+# Load documents on startup
 data_dir = os.path.join(os.getcwd(), "data")
 if os.path.exists(data_dir):
     print(f"Loading PDF documents from {data_dir}...")
@@ -21,81 +18,80 @@ if os.path.exists(data_dir):
 else:
     print(f"Data directory {data_dir} not found. No documents loaded.")
 
-# Create MCP tools
-class SearchPLCTool(MCPTool):
-    name = "search_plc"
-    description = "Search for information about a Public Limited Company (PLC) from Financial Times"
+class MCPHandler(BaseHTTPRequestHandler):
+    """Simple HTTP handler for MCP requests"""
     
-    def __init__(self):
-        super().__init__()
-        self.parameters = {
-            "type": "object",
-            "properties": {
-                "company_name": {
-                    "type": "string",
-                    "description": "The name of the company to search for"
-                },
-                "max_results": {
-                    "type": "integer",
-                    "description": "Maximum number of results to return",
-                    "default": 5
-                }
-            },
-            "required": ["company_name"]
-        }
+    def _set_headers(self, content_type="application/json"):
+        """Set response headers"""
+        self.send_response(200)
+        self.send_header('Content-type', content_type)
+        self.end_headers()
     
-    async def execute(self, params):
-        company_name = params.get("company_name")
-        max_results = params.get("max_results", 5)
+    def do_GET(self):
+        """Handle GET requests"""
+        if self.path == "/health":
+            self._set_headers()
+            self.wfile.write(json.dumps({"status": "ok"}).encode())
+        else:
+            self._set_headers()
+            self.wfile.write(json.dumps({"error": "Not found"}).encode())
+    
+    def do_POST(self):
+        """Handle POST requests"""
+        content_length = int(self.headers['Content-Length'])
+        post_data = self.rfile.read(content_length)
         
-        results = ft_api.search_plc(company_name, max_results)
-        
-        # Add results to vector store for future RAG queries
-        if "results" in results and len(results["results"]) > 0:
-            documents = []
-            for article in results["results"]:
-                if "summary" in article and "title" in article:
-                    documents.append({
-                        "content": f"{article['title']['title']} - {article['summary']['excerpt']}",
-                        "metadata": {
-                            "id": article.get("id"),
-                            "title": article["title"]["title"],
-                            "published": article.get("lifecycle", {}).get("initialPublishDateTime")
-                        }
-                    })
+        try:
+            data = json.loads(post_data.decode())
             
-            if documents:
-                vector_store.add_documents(documents)
-        
-        return results
-
-class RAGQueryTool(MCPTool):
-    name = "rag_query"
-    description = "Query the vector database for relevant information from annual reports"
+            # Process based on tool name
+            if self.path == "/tools/search_plc":
+                response = self._handle_search_plc(data)
+            elif self.path == "/tools/rag_query":
+                response = self._handle_rag_query(data)
+            elif self.path == "/tools/load_pdf_documents":
+                response = self._handle_load_pdf_documents(data)
+            else:
+                response = {"error": "Unknown tool"}
+            
+            self._set_headers()
+            self.wfile.write(json.dumps(response).encode())
+            
+        except json.JSONDecodeError:
+            self._set_headers()
+            self.wfile.write(json.dumps({"error": "Invalid JSON"}).encode())
+        except Exception as e:
+            self._set_headers()
+            self.wfile.write(json.dumps({"error": str(e)}).encode())
     
-    def __init__(self):
-        super().__init__()
-        self.parameters = {
-            "type": "object",
-            "properties": {
-                "query": {
-                    "type": "string",
-                    "description": "The query to search for in the annual reports and other documents"
-                },
-                "k": {
-                    "type": "integer",
-                    "description": "Number of results to return",
-                    "default": 5
-                }
-            },
-            "required": ["query"]
-        }
-    
-    async def execute(self, params):
-        query = params.get("query")
-        k = params.get("k", 5)
+    def _handle_search_plc(self, data):
+        """Handle search_plc tool requests"""
+        company_name = data.get("company_name")
+        max_results = data.get("max_results", 5)
         
-        results = vector_store.search(query, k)
+        if not company_name:
+            return {"error": "company_name parameter is required"}
+        
+        return ft_api.search_plc(company_name, max_results)
+    
+    def _handle_rag_query(self, data):
+        """Handle rag_query tool requests"""
+        query = data.get("query")
+        k = data.get("k", 10)  # Increased from 5 to 10
+        
+        if not query:
+            return {"error": "query parameter is required"}
+        
+        # Enhance the query for financial information
+        enhanced_query = query
+        if "total assets" in query.lower():
+            enhanced_query = f"{query} total assets balance sheet financial position"
+        elif "revenue" in query.lower():
+            enhanced_query = f"{query} revenue income statement profit"
+            
+        print(f"Enhanced query: {enhanced_query}")
+        
+        results = vector_store.search(enhanced_query, k)
         
         # Enhance results with source information
         for result in results:
@@ -117,26 +113,10 @@ class RAGQueryTool(MCPTool):
                     result['metadata']['source_description'] = "Document"
         
         return {"results": results}
-
-class LoadPDFDocumentsTool(MCPTool):
-    name = "load_pdf_documents"
-    description = "Load PDF documents from the data directory into the vector store"
     
-    def __init__(self):
-        super().__init__()
-        self.parameters = {
-            "type": "object",
-            "properties": {
-                "directory_path": {
-                    "type": "string",
-                    "description": "Path to the directory containing PDF files",
-                    "default": "data"
-                }
-            }
-        }
-    
-    async def execute(self, params):
-        directory_path = params.get("directory_path", "data")
+    def _handle_load_pdf_documents(self, data):
+        """Handle load_pdf_documents tool requests"""
+        directory_path = data.get("directory_path", "data")
         
         # Make sure the path is absolute
         if not os.path.isabs(directory_path):
@@ -151,13 +131,20 @@ class LoadPDFDocumentsTool(MCPTool):
         
         return {"status": "success", "message": f"Documents loaded from {directory_path}"}
 
-# Initialize MCP server
-server = MCPServer()
-server.add_tool(SearchPLCTool())
-server.add_tool(RAGQueryTool())
-server.add_tool(LoadPDFDocumentsTool())
+def run_server(port=8000):
+    """Run the MCP server"""
+    server_address = ('', port)
+    httpd = HTTPServer(server_address, MCPHandler)
+    print(f"Starting MCP server on port {port}...")
+    httpd.serve_forever()
 
-# Start the server
+def start_server_thread():
+    """Start the server in a separate thread"""
+    server_thread = threading.Thread(target=run_server)
+    server_thread.daemon = True
+    server_thread.start()
+    return server_thread
+
 if __name__ == "__main__":
     # Save vector store on exit
     import atexit
@@ -169,4 +156,4 @@ if __name__ == "__main__":
     atexit.register(save_vector_store)
     
     # Start the server
-    server.start()
+    run_server()

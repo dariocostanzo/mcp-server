@@ -1,10 +1,17 @@
 # Core dependencies
-fastmcp>=0.1.0          # MCP server implementation
-langchain>=0.1.0        # For agent framework
+langchain>=0.1.0        # For RAG framework
 langchain-community>=0.0.10  # For community integrations
+langchain-text-splitters>=0.0.1  # For text splitting functionality
 faiss-cpu>=1.7.4        # Vector database
 sentence-transformers>=2.2.2  # For embeddings
 requests>=2.31.0        # For API calls
 python-dotenv>=1.0.0    # For environment variables
 ollama>=0.1.0           # Python client for Ollama
-PyPDF2==3.0.1
+pypdf>=3.0.0            # For PDF processing
+PyPDF2>=3.0.0           # For PDF processing (uppercase version)
+langchain-huggingface>=0.0.1
+# Dependencies for requests and other libraries
+certifi>=2023.7.22      # For SSL certificate verification
+charset-normalizer>=3.2.0  # For character detection in requests
+annotated_types>=0.5.0  # Required by pydantic
+pydantic>=2.0.0         # Used by LangChain and Ollama client
