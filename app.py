@@ -224,6 +224,17 @@ def process_query(query):
     
     return response["message"]["content"] if "message" in response and "content" in response["message"] else f"Error: {response.get('error', 'Unknown error')}"
 
+def list_loaded_documents():
+    """List all documents loaded in the vector store"""
+    if hasattr(vector_store, 'documents') and vector_store.documents:
+        print("Documents loaded in vector store:")
+        for i, doc in enumerate(vector_store.documents):
+            source = doc.metadata.get('source', 'Unknown source')
+            print(f"{i+1}. {source}")
+    else:
+        print("No documents loaded in vector store")
+
+# Add this to your main() function
 def main():
     # Ensure MCP server is running
     ensure_mcp_server_running()
