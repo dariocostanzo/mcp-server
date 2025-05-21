@@ -18,7 +18,7 @@ This is the entry point of the application with these key functions:
 - `process_query(query)`: The core function that: 
   - Creates a chat message with system prompt and user query 
   - Sends it to Ollama 
-  - Analyzes the response for tool call patterns 
+  - Analyses the response for tool call patterns 
   - Executes RAG queries for financial data 
   - Searches Financial Times if needed 
   - Returns the final response 
@@ -67,6 +67,8 @@ Contains environment variables:
 - `FT_COOKIE`: Authentication cookie for Financial Times API 
 
 ## How MCP Works with RAG 
+MCP (Model Customization Protocol), developed by Anthropic, simplifies how Large Language Models (LLMs) interact with external tools and data. It uses a client-server model where an MCP client within the AI application communicates with an MCP server that provides access to tools, resources, and prompt templates. This server can run locally or remotely. MCP simplifies providing context to LLM applications, enabling access to APIs for web searches, local documents, code repositories (like GitHub), and other resources. This standardized communication layer replaces custom-built integrations, making it easier for AI models to interact with various applications without complex coding or limitations.
+
 The Model Context Protocol (MCP) in this application is a custom implementation that allows the LLM to use tools. Here's how it works with RAG: 
 
 1. **MCP Server Setup**: 
@@ -77,7 +79,7 @@ The Model Context Protocol (MCP) in this application is a custom implementation 
 2. **Tool Calling Process**: 
    
    - When the user asks a question, the system prompt instructs the model about available tools 
-   - The model's response is analyzed for tool call patterns (e.g., "I need to use the rag_query tool") 
+   - The model's response is analysed for tool call patterns (e.g., "I need to use the rag_query tool") 
    - The application then calls the appropriate MCP tool via HTTP 
 
 3. **RAG Implementation**: 
