@@ -57,7 +57,7 @@ python app.py
 
 ## Example Queries
 
-- "What was Barclays' 'total assets' value in 2020?"
+- "What was Barclays PLC total assets value in 2020?"
 - "How much revenue did Barclays report in 2019?"
 - "What were the key financial highlights in the 2020 annual report?"
 
