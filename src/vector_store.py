@@ -1,5 +1,6 @@
 import os
 import pickle
+import re
 from typing import List, Dict, Any
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
@@ -44,12 +45,46 @@ class VectorStore:
                 )
                 chunks = text_splitter.split_documents(documents)
                 
-                # Add source information
+                # Extract filename and year information
+                filename = os.path.basename(file_path)
+                
+                # Add enhanced metadata to each chunk
                 for chunk in chunks:
-                    chunk.metadata['source'] = os.path.basename(file_path)
+                    # Add basic source information
+                    chunk.metadata['source'] = filename
+                    
+                    # Extract company name and year if possible
+                    company_name = None
+                    year = None
+                    
+                    # Try to extract year from filename (e.g., "Company-Annual-Report-2020.pdf")
+                    year_match = re.search(r'(\d{4})', filename)
+                    if year_match:
+                        year = year_match.group(1)
+                    
+                    # Try to extract company name from filename
+                    # Common patterns: "Company-PLC", "Company_plc", etc.
+                    company_match = re.search(r'^([A-Za-z\-]+)', filename)
+                    if company_match:
+                        company_name = company_match.group(1).replace('-', ' ')
+                    
+                    # Add extracted information to metadata
+                    if year:
+                        chunk.metadata['year'] = year
+                    if company_name:
+                        chunk.metadata['company'] = company_name
+                    
+                    # Create a readable source description
+                    source_desc = filename
+                    if company_name and year:
+                        source_desc = f"{company_name} Annual Report {year}"
+                    elif year:
+                        source_desc = f"Annual Report {year}"
+                    
+                    chunk.metadata['source_description'] = source_desc
                 
                 self.documents.extend(chunks)
-                print(f"Added {len(chunks)} chunks from {os.path.basename(file_path)}")
+                print(f"Added {len(chunks)} chunks from {filename}")
             except Exception as e:
                 print(f"Error loading {file_path}: {e}")
         
@@ -74,14 +109,24 @@ class VectorStore:
         try:
             results = self.vectorstore.similarity_search_with_score(query, k=k)
             
-            # Format results
+            # Format results with enhanced metadata
             formatted_results = []
             for doc, score in results:
-                formatted_results.append({
+                result = {
                     "content": doc.page_content,
                     "metadata": doc.metadata,
                     "score": float(score)
-                })
+                }
+                
+                # Add a formatted source field for easier display
+                if 'source_description' in doc.metadata:
+                    result['source'] = doc.metadata['source_description']
+                elif 'year' in doc.metadata:
+                    result['source'] = f"Annual Report {doc.metadata['year']}"
+                else:
+                    result['source'] = doc.metadata.get('source', 'Unknown source')
+                
+                formatted_results.append(result)
             
             return formatted_results
         except Exception as e:
