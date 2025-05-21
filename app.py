@@ -10,13 +10,12 @@ from src.vector_store import VectorStore
 load_dotenv()
 
 # Check if MCP server is running, start if not
-
-
 def ensure_mcp_server_running():
     """Check if MCP server is running, start if not"""
     try:
         # Simple check - this will fail if server is not running
-        response = requests.get("http://localhost:8000/health")
+        # FastMCP typically uses a different endpoint structure
+        response = requests.get("http://localhost:8000/")
         if response.status_code == 200:
             print("MCP server is already running")
             return
@@ -89,8 +88,10 @@ Provide a comprehensive summary that combines information from both sources.
 def call_mcp_tool(tool_name, params):
     """Call an MCP tool with parameters"""
     try:
+        # Updated to use FastMCP's API structure
+        # FastMCP typically exposes tools directly at the root
         response = requests.post(
-            f"http://localhost:8000/tools/{tool_name}",
+            f"http://localhost:8000/{tool_name}",
             json=params
         )
 

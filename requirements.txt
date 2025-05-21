@@ -9,7 +9,11 @@ python-dotenv>=1.0.0    # For environment variables
 ollama>=0.1.0           # Python client for Ollama
 pypdf>=3.0.0            # For PDF processing
 PyPDF2>=3.0.0           # For PDF processing (uppercase version)
-langchain-huggingface>=0.0.1
+langchain-huggingface>=0.0.1  # For HuggingFace integrations
+
+# MCP implementation
+fastmcp>=0.1.0          # For Model Context Protocol implementation
+
 # Dependencies for requests and other libraries
 certifi>=2023.7.22      # For SSL certificate verification
 charset-normalizer>=3.2.0  # For character detection in requests
