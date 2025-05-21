@@ -284,6 +284,30 @@ def main():
 
     print("\nFinancial PLC Research Assistant")
     print("--------------------------------")
+    
+    # Hardcoded questions to process automatically
+    hardcoded_questions = [
+        "What was Barclays' total revenue in 2020?",
+        "What were the total assets of Barclays in 2020?",
+        "What are the main risks mentioned in Barclays' annual report?",
+        "How did Barclays perform financially in 2020?",
+        "What is Barclays' strategy for the future?"
+    ]
+    
+    # Process each hardcoded question
+    for question in hardcoded_questions:
+        print(f"\nProcessing question: {question}")
+        print("-" * 50)
+        
+        response = process_query(question)
+        
+        print("\nResponse:")
+        print("-" * 50)
+        print(response)
+        print("-" * 50)
+        print("\n")
+    
+    print("All questions processed. Exiting.")
     print("Type 'exit' to quit")
     print()
 
